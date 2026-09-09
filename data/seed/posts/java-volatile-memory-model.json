@@ -1,0 +1,9 @@
+{
+  "slug": "java-volatile-memory-model",
+  "title": "Java 面试题 4：volatile 能保证什么？说说 Java 内存模型（JMM）",
+  "summary": "可见性、有序性、不保证原子性；happens-before、内存屏障。",
+  "body": "## 核心问题\n\n`volatile` 有什么作用、能保证什么、不能保证什么？\n\n## Java 内存模型（JMM）\nJMM 规定：所有变量存在**主内存**，线程操作变量前先拷贝到各自的**工作内存（本地缓存）**，再写回。这导致线程间变量对彼此不一定可见。\n\nJMM 通过三条性质来约束：**原子性、可见性、有序性**，以及一组 **happens-before** 规则。\n\n## volatile 的三个要点\n1. **可见性**：写 volatile 变量会立即刷回主内存，读时会强制从主内存取最新值，禁止使用缓存。\n2. **有序性**：禁止编译器 / CPU 对其前后指令做**重排序**（通过内存屏障实现）。\n3. **不保证原子性**：它无法保证复合操作（如 `count++`）的原子性——`i++` 是读-改-写三步，仍会丢数据。\n\n```java\nvolatile boolean flag = false;\n// 线程A: flag = true;      // 写后立刻对其他线程可见\n// 线程B: while (!flag) {}   // 能读到最新值\n```\n\n## 加分点\n\n- 能举例：`volatile` 常与 CAS 或 synchronized 配合，实现无锁的可见标志 / 单例双重检查锁。\n- 单例 `DCL` 中 `instance` 必须 `volatile` 的原因：防止**指令重排序**导致拿到未初始化完成的对象。\n- 提到 **happens-before**：volatile 写 happens-before 于后续对该变量的读；锁的释放 happens-before 于后续加锁。\n\n> 一句话：volatile 解决**可见性与有序性**，不解决**原子性**。",
+  "date": "2026-07-07",
+  "tags": ["Java", "面试", "并发"],
+  "published": true
+}

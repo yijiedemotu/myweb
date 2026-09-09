@@ -1,0 +1,9 @@
+{
+  "slug": "hello-world",
+  "title": "你好，世界",
+  "summary": "第一篇示例文章，演示博客支持标题、代码块、列表和链接。",
+  "body": "欢迎来到你的个人博客！这篇文章用来演示常见的 Markdown 排版。\n\n## 代码块\n\n```ts\nfunction greet(name: string) {\n  return `你好，${name}`;\n}\n```\n\n## 列表\n\n- 展示你的学习笔记\n- 记录踩坑经验\n- 沉淀项目复盘\n\n## 链接\n\n点这里进入 [后台管理](/admin) 用密码登录后即可发布你的第一篇文章。",
+  "date": "2026-01-01",
+  "tags": ["介绍", "示例"],
+  "published": true
+}

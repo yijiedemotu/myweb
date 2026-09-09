@@ -1,0 +1,13 @@
+{
+  "slug": "portfolio-starter",
+  "title": "个人作品站",
+  "tagline": "你正在看的这个网站",
+  "description": "一个用 **Next.js** 搭建的个人作品与博客站点，自带 `/admin` 后台可视化编辑内容。\n\n- 作品展示与博客详情均支持 Markdown\n- 内容以 JSON 文件存储，天然可纳入 git 版本管理\n- 单文件数据层，后续可平滑迁移到数据库",
+  "tech": ["Next.js", "TypeScript", "Tailwind CSS", "Markdown"],
+  "url": "",
+  "repo": "https://github.com/yourname/your-repo",
+  "image": "",
+  "year": "2026",
+  "status": "active",
+  "featured": true
+}

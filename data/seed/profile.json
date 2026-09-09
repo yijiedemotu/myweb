@@ -1,0 +1,30 @@
+{
+  "name": "邵冠铭",
+  "headline": "全栈开发者 / 项目作者",
+  "email": "you@example.com",
+  "location": "中国",
+  "intro": "你好，我是一个热爱技术的开发者，这里展示我做过的一些项目和日常写的博客文章。",
+  "about": "## 关于我\r\n\r\n这里写一段稍长的自我介绍，支持 **Markdown**。\r\n\r\n- 列出你的技能或经历\r\n- 用列表、加粗、链接等格式自由排版\r\n\r\n个人简历页会展示这份内容，并在侧边栏展示头像、技能和社交链接。",
+  "skills": [
+    "TypeScript",
+    "Node.js",
+    "Next.js",
+    "React",
+    "PostgreSQL",
+    "Docker"
+  ],
+  "links": [
+    {
+      "label": "undefined",
+      "url": "undefined"
+    },
+    {
+      "label": "undefined",
+      "url": "undefined"
+    },
+    {
+      "label": "undefined",
+      "url": "undefined"
+    }
+  ]
+}

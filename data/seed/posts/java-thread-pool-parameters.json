@@ -1,0 +1,9 @@
+{
+  "slug": "java-thread-pool-parameters",
+  "title": "Java 面试题 7：线程池 ThreadPoolExecutor 的核心参数和执行流程？",
+  "summary": "corePoolSize、maximumPoolSize、workQueue、拒绝策略；提交任务后走到哪一步。",
+  "body": "## 核心问题\n\n线程池为什么好？`ThreadPoolExecutor` 有哪些核心参数？\n\n## 好处\n避免反复创建/销毁线程的开销，控制并发数量，便于复用与管理。**生产环境不要用 Executors 的快捷方法**（FixedThreadPool 无界队列、CachedThreadPool 可创建大量线程），应手动 new 并配合理的队列与拒绝策略。\n\n## 核心参数\n```java\nnew ThreadPoolExecutor(\n  corePoolSize,      // 核心线程数\n  maximumPoolSize,   // 最大线程数\n  keepAliveTime,     // 非核心线程空闲存活时间\n  TimeUnit,          // 时间单位\n  workQueue,         // 阻塞队列，如 ArrayBlockingQueue / LinkedBlockingQueue\n  threadFactory,     // 线程工厂（可命名线程）\n  handler            // 拒绝策略\n);\n```\n\n## 执行流程\n1. 线程数 < corePoolSize → 新建核心线程执行。\n2. ≥ corePoolSize → 任务放入 **workQueue** 排队。\n3. 队列满 → 线程数 < maximumPoolSize → 新建非核心线程执行。\n4. 队列满且线程数已达 maximumPoolSize → 走**拒绝策略**。\n\n## 四种拒绝策略\n- `AbortPolicy`（默认）：抛 `RejectedExecutionException`。\n- `CallerRunsPolicy`：由提交任务的线程自己执行（放慢生产，适合削峰）。\n- `DiscardPolicy`：静默丢弃。\n- `DiscardOldestPolicy`：丢弃队列中最老的任务再重试提交。\n\n## 加分点\n\n- 说清“先核心、再队列、再最大、最后拒绝”的顺序，这是最常见的追问。\n- 合理设置：CPU 密集型 ≈ `CPU核数+1`，IO 密集型可更高（`CPU核数 * 2` 左右或按 IO/计算占比算）。\n- 记得线程池要优雅关闭（shutdown / awaitTermination）。\n\n> 记忆顺序：**先核心线程 → 塞队列 → 建到最大 → 拒绝**。",
+  "date": "2026-07-04",
+  "tags": ["Java", "面试", "并发"],
+  "published": true
+}

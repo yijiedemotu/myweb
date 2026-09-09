@@ -1,0 +1,9 @@
+{
+  "slug": "java-program-run-jdk-jre-jvm",
+  "title": "Java 面试题 1：Java 程序是如何运行的？说说 JDK / JRE / JVM",
+  "summary": "从源码到字节码再到机器执行，理清 JDK、JRE、JVM 的关系与“一次编译处处运行”。",
+  "body": "## 核心问题\n\n**Java 程序是怎么跑起来的？** 以及 **JDK、JRE、JVM 的区别**。\n\n## 一句话回答\n\n```text\n源码(.java) --javac编译--> 字节码(.class) --JVM解释/即时编译--> 机器码执行\n```\n\nJava 源码经 `javac` 编译成与平台无关的**字节码**，再由**JVM（Java 虚拟机）**加载并执行。正因为字节码不针对某个操作系统，所以只要目标平台装了对应版本的 JVM，就能运行同一份 `.class`——这就是“一次编译，处处运行”。\n\n## 三者关系\n\n| 组成 | 作用 |\n| --- | --- |\n| **JVM** | Java 虚拟机，负责加载字节码、管理内存、执行，是跨平台的关键 |\n| **JRE** | 运行环境 = JVM + 核心类库（`java.lang`、`java.util` 等） |\n| **JDK** | 开发工具包 = JRE + 开发工具（`javac`、`jar`、`jconsole` 等） |\n\n所以 JDK ⊃ JRE ⊃ JVM。只运行别人写好的程序装 JRE 即可；要自己开发则需要 JDK。\n\n## 加分点\n\n- 能说出 `.java → .class → JVM` 完整链路，并强调**字节码平台无关、JVM 平台相关**。\n- 提到 ClassLoader 加载类、字节码校验、执行引擎中解释器与 **JIT 即时编译器**（热点代码编译成机器码）的配合。\n- 提到 Java 9 起 JRE 不再单独对外发布，JDK 中已包含运行时。",
+  "date": "2026-07-10",
+  "tags": ["Java", "面试", "JVM"],
+  "published": true
+}

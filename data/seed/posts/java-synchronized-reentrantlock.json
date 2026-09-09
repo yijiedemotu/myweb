@@ -1,0 +1,9 @@
+{
+  "slug": "java-synchronized-reentrantlock",
+  "title": "Java 面试题 8：synchronized 和 ReentrantLock 的区别？",
+  "summary": "锁的底层、可重入、公平锁、可中断、tryLock、条件变量等对比。",
+  "body": "## 核心问题\n\n`synchronized` 与 `ReentrantLock` 有何异同，怎么选？\n\n## 对比表\n| 维度 | synchronized | ReentrantLock |\n| --- | --- | --- |\n| 加锁/释放 | 自动（JVM 管，异常也释放） | 需手动 `lock()`/`unlock()`（通常 finally 释放） |\n| 底层 | JVM 层面的监视器锁（monitor） | AQS 实现（java.util.concurrent） |\n| 可重入 | 是 | 是 |\n| 是否公平 | 非公平 | 可指定公平/非公平 |\n| 可中断 | 不支持 | 支持（`lockInterruptibly`） |\n| 尝试获取 | 不支持 | `tryLock(timeout)` |\n| 条件变量 | `wait/notify` | `newCondition()`（可多个、更灵活） |\n| 性能 | 现代 JVM 偏向锁/轻量级锁，已不差 | 高并发读多时灵活 |\n\n## 说明\n- 两者都**可重入**：同一线程可多次获取同一把锁。\n- JDK6 后 synchronized 引入**锁升级**：偏向锁 → 轻量级锁 → 重量级锁，性能已大幅提升，普通场景优先用它（简单不易错）。\n- 需要**公平锁 / 超时等待 / 可中断 / 多个条件队列**时，用 `ReentrantLock`。\n\n## 加分点\n\n- 提到底层：synchronized 基于 **Monitor（管程）**，对象头 Mark Word 里记录锁状态。\n- ReentrantLock 基于 **AQS**（AbstractQueuedSynchronizer），volatile state + CLH 队列。\n- 能举例用 `Condition` 实现生产者-消费者比 wait/notify 更清晰。\n\n> 简单可靠用 synchronized；要公平锁、可中断、tryLock 或多路 Condition 用 ReentrantLock。",
+  "date": "2026-07-03",
+  "tags": ["Java", "面试", "并发"],
+  "published": true
+}

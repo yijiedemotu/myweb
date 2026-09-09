@@ -1,0 +1,9 @@
+{
+  "slug": "java-reflection-dynamic-proxy",
+  "title": "Java 面试题 10：什么是反射？JDK 动态代理和 CGLIB 有什么区别？",
+  "summary": "反射能力与用途、获取 Class 三种方式、JDK Proxy vs CGLIB 原理与局限。",
+  "body": "## 核心问题\n\n什么是反射？它常用在哪？动态代理 JDK 和 CGLIB 的区别？\n\n## 什么是反射\n程序在**运行时**动态获取类的完整信息（字段、方法、构造器、注解），并能在运行时调用/修改它们的能力。\n\n```java\nClass<?> cls = Class.forName(\"java.lang.String\");   // 三种方式之一\nMethod m = cls.getMethod(\"length\");\nint len = (int) m.invoke(\"hello\");                 // 运行时调用\n```\n\n**获取 Class 的三种方式**：`类.class`、`对象.getClass()`、`Class.forName(\"全类名\")`。\n\n**典型用途**：框架（Spring 的 IOC/AOP、MyBatis 映射）、注解处理、反序列化、JDBC 驱动加载等。缺点是性能略低、破坏封装，可用缓存/提升技巧缓解。\n\n## JDK 动态代理 vs CGLIB\n| 维度 | JDK Proxy | CGLIB |\n| --- | --- | --- |\n| 实现 | 基于**接口**，`Proxy.newProxyInstance` + InvocationHandler | 基于**继承**目标类，生成子类 |\n| 要求 | 目标必须有接口 | 目标类不能是 final，方法不能 final |\n| 生成方式 | 生成实现接口的代理类 | 用字节码生成目标子类 |\n| 选择 | 有接口时常用 | 无接口/接口少时用 |\n\n> Spring AOP 默认对**有接口**的 Bean 用 JDK Proxy，**没有接口**时用 CGLIB（Spring Boot 默认开启 `proxyTargetClass` 则都用 CGLIB）。\n\n## 加分点\n\n- 能说 JDK 动态代理基于 InvocationHandler + 接口；CGLIB 用 Enhancer 基于子类。\n- 提到 JDK17 之后 CGLIB/反射会有一些限制，很多框架也支持更现代的字节码方案（如 ByteBuddy）。\n- 会举 Spring AOP、MyBatis Mapper 代理的实际例子。\n\n> 一句话：**JDK 代理要接口，CGLIB 走继承**。",
+  "date": "2026-07-01",
+  "tags": ["Java", "面试", "框架"],
+  "published": true
+}

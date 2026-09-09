@@ -1,0 +1,9 @@
+{
+  "slug": "java-concurrenthashmap-cas",
+  "title": "Java 面试题 6：HashMap 和 ConcurrentHashMap 的区别？并发安全怎么实现？",
+  "summary": "synchronized 锁桶、CAS、锁粒度演进；讲讲 CAS 与 ABA。",
+  "body": "## 核心问题\n\nHashMap 为什么不能用并发？ConcurrentHashMap 如何保证线程安全？\n\n## 演进对比\n| 版本 | 实现 |\n| --- | --- |\n| JDK7 ConcurrentHashMap | **分段锁（Segment）**，每段一把锁，锁粒度较粗 |\n| JDK8 ConcurrentHashMap | 放弃分段锁，改用 **CAS + synchronized 锁单个桶的头节点**，粒度更细、并发更高 |\n\n## JDK8 关键点\n- **put**：桶为空用 **CAS** 写入；桶非空则对该桶的头节点 `synchronized` 加锁后插入。\n- **size / 计数**：用 `CounterCell` 分散计数，减少竞争。\n- **get**：数组与部分字段 `volatile`，无需加锁即可安全读。\n- 不允许 key/value 为 null（区别于 HashMap 允许 key 为 null）。\n\n## 顺带讲讲 CAS\nCAS（Compare And Swap）是乐观锁思想：比较期望值，若内存当前值 == 期望值则更新，否则失败重试。它由 CPU 原子指令支持。\n\n**问题：ABA**——值从 A 变 B 又变回 A，CAS 会误认为没变。可用版本号（如 `AtomicStampedReference`）解决。\n\n## 加分点\n\n- 能说清从“分段锁”到“锁桶+CAS”的锁粒度优化思路。\n- 解释 JDK8 为什么读操作无需锁（volatile + 不可变/安全发布）。\n- 提到 `LongAdder` 也用“分段计数”思想，适合高并发累加。\n\n> 一句话：读靠 volatile，写冲突用 CAS，冲突升级用 synchronized 锁桶。",
+  "date": "2026-07-05",
+  "tags": ["Java", "面试", "并发", "集合"],
+  "published": true
+}

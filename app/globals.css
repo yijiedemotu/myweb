@@ -1,0 +1,246 @@
+@import "tailwindcss";
+
+/* Make Tailwind's `dark:` variant follow the manual `.dark` class on <html>
+   (in addition to the default prefers-color-scheme behaviour). */
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+  --prose-a: #2563eb;
+  --prose-quote: #666666;
+
+  /* syntax highlighting (light) */
+  --code-bg: #f6f8fa;
+  --code-fg: #24292e;
+  --c-comment: #6e7781;
+  --c-keyword: #cf222e;
+  --c-string: #0a3069;
+  --c-number: #0550ae;
+  --c-title: #8250df;
+  --c-attr: #953800;
+  --c-built: #0550ae;
+  --c-meta: #82071e;
+  --c-param: #116329;
+  --c-type: #0550ae;
+}
+
+/* Explicit dark theme (chosen via toggle) */
+html.dark {
+  --background: #0a0a0a;
+  --foreground: #ededed;
+  --prose-a: #60a5fa;
+  --prose-quote: #bbbbbb;
+
+  --code-bg: #0d1117;
+  --code-fg: #e6edf3;
+  --c-comment: #8b949e;
+  --c-keyword: #ff7b72;
+  --c-string: #a5d6ff;
+  --c-number: #79c0ff;
+  --c-title: #d2a8ff;
+  --c-attr: #ffa657;
+  --c-built: #79c0ff;
+  --c-meta: #ff7b72;
+  --c-param: #c9d1d9;
+  --c-type: #ffa657;
+}
+
+/* Follow the OS scheme only when the user has not made an explicit choice
+   (neither .dark nor .light class is present). */
+@media (prefers-color-scheme: dark) {
+  :root:not(.light) {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+    --prose-a: #60a5fa;
+    --prose-quote: #bbbbbb;
+
+    --code-bg: #0d1117;
+    --code-fg: #e6edf3;
+    --c-comment: #8b949e;
+    --c-keyword: #ff7b72;
+    --c-string: #a5d6ff;
+    --c-number: #79c0ff;
+    --c-title: #d2a8ff;
+    --c-attr: #ffa657;
+    --c-built: #79c0ff;
+    --c-meta: #ff7b72;
+    --c-param: #c9d1d9;
+    --c-type: #ffa657;
+  }
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+html {
+  color-scheme: light;
+}
+html.dark {
+  color-scheme: dark;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+/* ---- Markdown prose styling ---- */
+.prose {
+  max-width: 72ch;
+  line-height: 1.8;
+  font-size: 1.05rem;
+}
+.prose > :first-child {
+  margin-top: 0;
+}
+.prose h1 {
+  font-size: 1.9rem;
+  font-weight: 700;
+  margin: 1.6em 0 0.6em;
+}
+.prose h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 1.5em 0 0.5em;
+  padding-bottom: 0.3em;
+  border-bottom: 1px solid rgba(128, 128, 128, 0.25);
+}
+.prose h3 {
+  font-size: 1.2rem;
+  font-weight: 600;
+  margin: 1.3em 0 0.4em;
+}
+.prose p {
+  margin: 0.8em 0;
+}
+.prose a {
+  color: var(--prose-a);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.prose ul,
+.prose ol {
+  margin: 0.8em 0;
+  padding-left: 1.4em;
+}
+.prose ul {
+  list-style: disc;
+}
+.prose ol {
+  list-style: decimal;
+}
+.prose li {
+  margin: 0.35em 0;
+}
+.prose blockquote {
+  margin: 1em 0;
+  padding: 0.1em 1em;
+  border-left: 4px solid rgba(128, 128, 128, 0.4);
+  color: var(--prose-quote);
+}
+.prose code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.9em;
+  background: rgba(128, 128, 128, 0.15);
+  padding: 0.15em 0.4em;
+  border-radius: 4px;
+}
+.prose pre {
+  background: var(--code-bg);
+  color: var(--code-fg);
+  padding: 1em 1.2em;
+  border-radius: 8px;
+  overflow-x: auto;
+  margin: 1em 0;
+  line-height: 1.6;
+}
+.prose pre code {
+  background: transparent;
+  padding: 0;
+  font-size: 0.9rem;
+}
+.prose img {
+  border-radius: 8px;
+  margin: 1em 0;
+  max-width: 100%;
+}
+.prose hr {
+  margin: 2em 0;
+  border: 0;
+  border-top: 1px solid rgba(128, 128, 128, 0.3);
+}
+.prose table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1em 0;
+  font-size: 0.95rem;
+}
+.prose th,
+.prose td {
+  border: 1px solid rgba(128, 128, 128, 0.35);
+  padding: 0.5em 0.8em;
+  text-align: left;
+}
+
+/* ---- Syntax highlighting (highlight.js) ---- */
+.hljs {
+  color: var(--code-fg);
+}
+.hljs-comment,
+.hljs-quote,
+.hljs-deletion {
+  color: var(--c-comment);
+  font-style: italic;
+}
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-literal,
+.hljs-doctag {
+  color: var(--c-keyword);
+}
+.hljs-string,
+.hljs-regexp,
+.hljs-addition {
+  color: var(--c-string);
+}
+.hljs-number,
+.hljs-symbol,
+.hljs-bullet {
+  color: var(--c-number);
+}
+.hljs-title,
+.hljs-title.function_,
+.hljs-title.class_,
+.hljs-section {
+  color: var(--c-title);
+  font-weight: 600;
+}
+.hljs-attr,
+.hljs-attribute,
+.hljs-variable {
+  color: var(--c-attr);
+}
+.hljs-built_in,
+.hljs-type,
+.hljs-class .hljs-title {
+  color: var(--c-built);
+}
+.hljs-meta,
+.hljs-constant {
+  color: var(--c-meta);
+}
+.hljs-params {
+  color: var(--c-param);
+}
+.hljs-emphasis {
+  font-style: italic;
+}
+.hljs-strong {
+  font-weight: 700;
+}

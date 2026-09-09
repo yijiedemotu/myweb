@@ -1,0 +1,9 @@
+{
+  "slug": "java-string-builder-pool-equals",
+  "title": "Java 面试题 9：String 为什么不可变？StringBuilder/StringBuffer？== 与 equals？",
+  "summary": "不可变性、字符串常量池、String vs StringBuilder vs StringBuffer、== vs equals。",
+  "body": "## 核心问题\n\nString 为什么不可变、三者区别、`==` 和 `equals` 的区别。\n\n## String 为什么不可变\n- String 内部用 `final char[]/byte[]` 保存，且没有暴露修改方法；字段是 **final + private**，类本身是 final（不可被继承）。\n- 好处：可安全共享进**字符串常量池**、可作 HashMap 的 key / 缓存、线程安全。\n\n## 字符串常量池\n- 编译期能确定的字符串字面量（如 `\"a\"`）进入常量池，相同内容复用同一对象。\n- `new String(\"a\")` 会在堆上新建对象，`==` 与常量池里的那个不相等。\n\n```java\nString a = \"a\" + \"b\";      // 编译期常量折叠 -> 常量池\nString x = \"ab\";\nSystem.out.println(a == x); // true（都是常量池同对象）\nString b = new String(\"ab\");\nSystem.out.println(a == b); // false（一个在池、一个在堆）\nSystem.out.println(a.equals(b)); // true\n```\n\n## 三个类的区别\n| 类 | 可变 | 线程安全 | 适用 |\n| --- | --- | --- | --- |\n| String | 不可变 | 安全 | 少量字符串拼接 / 常量 |\n| StringBuilder | 可变 | 不安全 | **单线程**大量拼接（优先） |\n| StringBuffer | 可变 | 安全（方法加了 synchronized） | 多线程拼接（较少用） |\n\n## == 与 equals\n- `==` 比较**引用地址**（基本类型比较值）。\n- `equals` 默认也是 `==`，但 String 重写了它，比较**内容是否相等**。\n- 比较字符串内容一律用 `equals`（或用 `Objects.equals`）。\n\n## 加分点\n\n- 能说清常量池与 `new` 的差别、为什么“不可变”是共享池的前提。\n- 提到高频拼接用 StringBuilder，避免大量中间 String。\n- 会问重写 `equals` 时必须同时重写 `hashCode`，否则违反 HashSet/HashMap 约定。",
+  "date": "2026-07-02",
+  "tags": ["Java", "面试", "基础"],
+  "published": true
+}
