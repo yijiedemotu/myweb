@@ -7,12 +7,15 @@
 - **Next.js 16 (App Router) + React 19 + TypeScript**
 - **Tailwind CSS 4**（样式，内置深色模式切换）
 - **marked + highlight.js**（Markdown 渲染与代码高亮）
-- **better-sqlite3**（内容数据库，单文件、零运维）
+- **Cloudflare D1**（内容数据库，托管 SQLite）
+- **Cloudflare Workers + OpenNext**（部署目标）
 
-> 数据层用 **SQLite**（`data/site.db`，better-sqlite3 驱动）：单作者读写量低，SQLite
-> 单文件即库、无需独立数据库服务，事务与索引够用。它是一套**真正的数据库**，
-> 便于作为作品卖点，也比 JSON 文件更贴近常规后端。所有页面都通过
-> `ContentRepo` 接口（`lib/content.ts`）读写，将来要换 Postgres 只替换该模块。
+> 数据层用 **D1**（Cloudflare 的托管 SQLite）：单作者读写量低，无需自建数据库服务，
+> 事务与索引够用。所有页面都通过 `ContentRepo` 接口（`lib/content.ts`）读写，
+> 所以从本地 SQLite 文件换成 D1 时，页面代码一行没动。
+>
+> 部署目标是 **Cloudflare Workers**（通过 `@opennextjs/cloudflare`），不需要买服务器、
+> 不需要备案。详见 [`DEPLOY_CLOUDFLARE.md`](./DEPLOY_CLOUDFLARE.md)。
 
 ## 功能
 
@@ -34,19 +37,20 @@
 # 1. 安装依赖
 npm install
 
-# 2. 配置后台密码（必改！）
+# 2. 配置后台密码
 cp .env.example .env.local
 # 编辑 .env.local，把 ADMIN_PASSWORD=changeme 改成你的密码
 
-# 3. 本地开发
-npm run dev        # http://localhost:3000 ，后台在 /admin
+# 3. 把表结构与内容应用到本地 D1（首次、以及迁移文件变化后执行）
+npm run db:migrate:local
 
-# 4. 生产构建
-npm run build
-npm run start
+# 4. 本地开发（next dev + 本地 D1）
+npm run dev        # http://localhost:3000 ，后台在 /admin
 ```
 
-默认后台密码为 `changeme`，首次使用请务必在 `.env.local` 中修改。
+想用**和线上一致的 Workers 运行时**验证：`npm run preview`。
+
+部署到线上（Cloudflare Workers）见 [`DEPLOY_CLOUDFLARE.md`](./DEPLOY_CLOUDFLARE.md)。
 
 ## 目录结构
 
@@ -58,38 +62,43 @@ app/                 # 前台与后台页面（App Router）
     (dashboard)/           # 受登录保护的后台（文章/作品/个人资料）
   rss.xml/                 # RSS 订阅源
 lib/
-  content.ts         # 内容仓储：对 SQLite 的读写（换数据库只改这里）
-  db.ts              # better-sqlite3 连接 + 建表 + 首次启动种子导入
+  content.ts         # 内容仓储：对 D1 的读写（换数据库只改这里）
+  db.ts              # 取 D1 绑定（env.DB）
+  mappers.ts         # DB 行 <-> 领域对象转换（纯函数）
   admin-actions.ts   # 后台所有写操作（Server Actions）
   auth.ts            # 登录会话（HttpOnly cookie + HMAC）
   markdown.ts        # Markdown 渲染 + highlight.js 代码高亮
 components/
   Cards.tsx / BlogSearch.tsx / ThemeToggle.tsx
   admin/             # 后台表单与编辑器组件
+migrations/          # D1 迁移：0001 建表，0002 初始内容
+scripts/
+  dump-d1-data.mjs       # 从旧 data/site.db 导出内容为 SQL
+  verify-migrations.mjs  # 本地回放迁移文件做校验
+wrangler.jsonc       # Worker / D1 绑定 / 静态资源配置
+open-next.config.ts  # OpenNext 适配器配置
 data/
-  site.db            # 运行时数据库（git 忽略）
-  seed/              # 出厂示例内容：首次启动时自动导入到空库
-    profile.json
-    projects/*.json
-    posts/*.json
+  site.db            # 迁移前的旧库，仅用于导出（git 忽略）
+  seed/              # 出厂示例内容（已被 0002 迁移固化）
 ```
 
 ## 内容数据
 
-所有内容存于 SQLite 表 `profile` / `projects` / `posts`（`data/site.db`），在后台编辑。
-`data/seed/` 下的 JSON 是"出厂示例"，仅当数据库为空时在**首次启动**自动导入，
-方便开箱即用；之后内容改在后台，不会再写这些文件。
+所有内容存于 D1 的三张表 `profile` / `projects` / `posts`，在 `/admin` 后台编辑，
+前台实时可见（读库页面都是 `force-dynamic`）。
 
-- 表结构见 `lib/db.ts`（`skills`/`tags`/`tech`/`links` 等以 JSON 文本列存储）
-- 重置数据：停服后删除 `data/site.db*` 再启动，即会重新从 `seed/` 导入
+- 表结构见 `migrations/0001_init_schema.sql`
+- 初始内容见 `migrations/0002_initial_content.sql`（1 条资料 / 7 个作品 / 11 篇文章）
+- `skills` / `tags` / `tech` / `links` 以 JSON 文本列存储
 - `slug` 只能是小写字母、数字和连字符
-- 数据库文件会被 git 忽略（`data/seed/` 仍纳入版本管理）
+- 想从旧的 `data/site.db` 重新导出：`npm run db:dump && npm run db:verify`
+- 重置本地数据：删掉 `.wrangler/state/v3/d1` 后重新 `npm run db:migrate:local`
 
 ## 配置环境变量
 
 | 变量 | 说明 |
 | --- | --- |
-| `ADMIN_PASSWORD` | 后台登录密码（生产环境必须设置） |
+| `ADMIN_PASSWORD` | 后台登录密码。本地放 `.env.local`；线上用 `npx wrangler secret put ADMIN_PASSWORD` |
 | `NEXT_PUBLIC_SITE_URL` | 站点域名，用于 RSS/生成绝对链接，如 `https://your-domain.com` |
 
 ## 自定义外观
@@ -100,5 +109,21 @@ data/
 
 ## 部署
 
-面向**国内服务器**的完整部署指引（备案、nginx 反向代理、SSL、守护进程等）
-见 [`DEPLOY_CN.md`](./DEPLOY_CN.md)。
+部署目标是 **Cloudflare Workers**，两种方式任选其一：
+
+- **控制台版（全程浏览器操作）**：[`DEPLOY_CLOUDFLARE_DASHBOARD.md`](./DEPLOY_CLOUDFLARE_DASHBOARD.md)
+  —— 在 Workers & Pages 里连接 Git 仓库，之后 `git push` 自动构建部署。
+- **命令行版**：[`DEPLOY_CLOUDFLARE.md`](./DEPLOY_CLOUDFLARE.md)
+
+命令行版的核心步骤：
+
+```bash
+npx wrangler login
+npx wrangler d1 create portfolio-website-db   # 把 database_id 填进 wrangler.jsonc
+npm run db:migrate:remote                     # 建表 + 灌入内容
+npx wrangler secret put ADMIN_PASSWORD        # 设置后台密码
+npm run deploy                                # 构建并发布
+```
+
+> `DEPLOY_CN.md`（国内服务器 + pm2 + Nginx）和 `docs/域名配置-CloudflareTunnel-cvetryu.cn.md`
+> 描述的是**迁移前**的架构，现在代码依赖 Workers 运行时提供的 D1 绑定，这两条路已不再适用。

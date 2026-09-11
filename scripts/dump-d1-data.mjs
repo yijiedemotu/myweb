@@ -4,14 +4,17 @@
  * 为什么要单独写脚本：
  *  - 站点正文可能还留在 WAL 文件里（site.db 很小但 site.db-wal 很大），
  *    所以要先复制三件套再 checkpoint，绝不能直接改原库。
- *  - D1 没有 better-sqlite3 那种本地文件能力，初始化只能靠 SQL 迁移文件。
+ *  - D1 没有本地文件能力，初始化只能靠 SQL 迁移文件。
+ *
+ * 用 Node 内置的 node:sqlite（Node 22.5+），不需要 better-sqlite3 这类原生依赖，
+ * 这样 Cloudflare 的构建环境里 `npm ci` 不必为部署去编译/下载原生模块。
  *
  * 用法：
  *   node scripts/dump-d1-data.mjs
  * 产物：
  *   migrations/0002_initial_content.sql
  */
-import Database from "better-sqlite3";
+import { DatabaseSync } from "node:sqlite";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -33,9 +36,9 @@ for (const suffix of ["", "-wal", "-shm"]) {
   if (fs.existsSync(from)) fs.copyFileSync(from, path.join(tmp, "site.db" + suffix));
 }
 
-const db = new Database(path.join(tmp, "site.db"));
+const db = new DatabaseSync(path.join(tmp, "site.db"));
 // 把 WAL 内容并回主库，之后读到的一定是最新已提交数据。
-db.pragma("wal_checkpoint(TRUNCATE)");
+db.exec("PRAGMA wal_checkpoint(TRUNCATE)");
 
 /* ---------- 2. 逐表导出 ---------- */
 
@@ -76,7 +79,7 @@ let total = 0;
 for (const table of TABLES) {
   // 老库可能缺列（例如早期没有 position），先取实际存在的列。
   const present = new Set(
-    db.pragma(`table_info(${table.name})`).map((c) => c.name),
+    db.prepare(`PRAGMA table_info(${table.name})`).all().map((c) => c.name),
   );
   const cols = table.columns.filter((c) => present.has(c));
   if (cols.length === 0) continue;

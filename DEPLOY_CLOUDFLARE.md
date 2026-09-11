@@ -3,6 +3,11 @@
 本项目已从「Node 服务器 + better-sqlite3 文件数据库」迁移到 **Cloudflare Workers +
 D1**。本文是从零到上线的完整操作步骤。
 
+> 📌 **想全程用浏览器操作、不装命令行工具？** 请看
+> [`DEPLOY_CLOUDFLARE_DASHBOARD.md`](./DEPLOY_CLOUDFLARE_DASHBOARD.md)
+> （在 Workers & Pages 控制台里连接 Git 仓库自动构建部署）。
+> 本文是命令行版本，两者选一个即可，不要混着做。
+
 > 只想快速跑通：跳到 [§3 首次部署](#3-首次部署一次性操作)。
 
 ---
@@ -43,7 +48,11 @@ Workers 运行在 `workerd` 里，它**没有文件系统、也不能加载原�
 
 ## 2. 前置条件
 
-- Node.js 20 或以上（本项目在 Node 24 上验证过）
+- Node.js 22.5 或以上（本项目在 Node 24 上验证过）
+  Next.js 16 本身只要 20+，但 `scripts/` 下的迁移工具用了 Node 内置的 `node:sqlite`
+  （22.5 起提供），所以本地跑这些脚本需要 22.5+。
+  **构建 Worker 不需要原生依赖**：`better-sqlite3` 已从依赖里彻底移除，
+  这样 Cloudflare 的构建环境 `npm ci` 时不必编译/下载任何原生模块。
 - 一个 Cloudflare 账号
 - 首次部署前先登录：`npx wrangler login`
 
@@ -80,6 +89,20 @@ npx wrangler d1 create portfolio-website-db
 ```bash
 npm run db:migrate:remote
 ```
+
+执行过程中 wrangler 会列出待应用的迁移并询问
+`Your database may not be available to serve requests during the migration, continue?`
+—— **这里必须回答 `yes`**。回答 `no` 会直接中止，一张表都不建，之后访问会报
+`no such table: profile`。那句"数据库可能不可用"是 D1 的通用警告，对空库无害。
+
+验证是否成功：
+
+```bash
+npx wrangler d1 execute portfolio-website-db --remote -y \
+  --command "SELECT (SELECT COUNT(*) FROM profile) AS profile, (SELECT COUNT(*) FROM projects) AS projects, (SELECT COUNT(*) FROM posts) AS posts;"
+```
+
+应得到 `1 | 7 | 11`。
 
 ### 3.3 设置后台密码
 
@@ -214,6 +237,12 @@ Routes → Add custom domain**，填你的域名即可，证书自动签发。
 `wrangler.jsonc` 里 `d1_databases[].binding` 必须是 `DB`。本地开发还要求
 `next.config.ts` 里调用了 `initOpenNextCloudflareForDev()`（已内置，且仅在
 `NODE_ENV=development` 时执行）。
+
+**`no such table: profile` / `no such table: posts`**
+§3.2 的迁移没有真正执行成功。最常见原因是 wrangler 的确认提示
+（`Your database may not be available to serve requests during the migration, continue?`）
+被回答了 `no`，命令中止且不建任何表。用 §3.2 末尾的验证命令确认现状，
+再重新执行并回答 `yes`。
 
 **部署后立刻 404 / `error code: 1042`**
 部署刚完成时偶发，等 1~2 分钟再试。若持续存在，检查是否配了

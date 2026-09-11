@@ -8,7 +8,7 @@
  *
  * 用法：node scripts/verify-migrations.mjs
  */
-import Database from "better-sqlite3";
+import { DatabaseSync } from "node:sqlite";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -26,10 +26,10 @@ if (files.length === 0) {
   process.exit(1);
 }
 
-const db = new Database(":memory:");
+const db = new DatabaseSync(":memory:");
 
 // D1 默认开着外键，本地也打开，尽量贴近真实环境。
-db.pragma("foreign_keys = ON");
+db.exec("PRAGMA foreign_keys = ON");
 
 for (const file of files) {
   const sql = fs.readFileSync(path.join(dir, file), "utf8");

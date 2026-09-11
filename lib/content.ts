@@ -1,4 +1,4 @@
-import type { ContentRepo, Post, Profile, Project } from "./types";
+import type { ContentRepo, Profile } from "./types";
 import { getDb } from "./db";
 import {
   colPost,

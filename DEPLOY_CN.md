@@ -1,5 +1,11 @@
 # 部署到国内服务器指南
 
+> ⚠️ **本文档已过时（迁移前架构）。**
+> 项目已改为部署到 **Cloudflare Workers + D1**，数据层不再使用 better-sqlite3 和
+> `data/site.db` 文件，因此本文件里的 `npm run build` / `npm start` / pm2 流程
+> **不再可用**。请改看 [`DEPLOY_CLOUDFLARE.md`](./DEPLOY_CLOUDFLARE.md)。
+> 本文保留仅作历史参考。
+
 本指南面向你把站点部署在**自己购买、位于中国大陆的云服务器**（阿里云 / 腾讯云 / 华为云等），并可选配置自己的域名。
 
 ## 0. 前置概念：备案

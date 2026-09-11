@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // OpenNext / Wrangler 的构建产物与本地状态，不该被 lint：
+    ".open-next/**",
+    ".wrangler/**",
   ]),
 ]);
 

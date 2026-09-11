@@ -1,5 +1,11 @@
 # cvetryu.cn 上线方案：Cloudflare Tunnel（保留阿里云大陆服务器）
 
+> ⚠️ **本文档已过时（迁移前架构）。**
+> 项目已改为部署到 **Cloudflare Workers + D1**，不再需要大陆服务器回源，
+> 也就不再需要 Cloudflare Tunnel。如果只是为了绕过备案把站点放上 Cloudflare，
+> 直接看 [`../DEPLOY_CLOUDFLARE.md`](../DEPLOY_CLOUDFLARE.md) 更简单、还免费。
+> 本文保留仅作历史参考。
+
 > **适用前提**：服务器留在阿里云大陆节点 `<SERVER_IP>`，域名用 `cvetryu.cn`，
 > 且**无法完成 ICP 备案**。
 >
