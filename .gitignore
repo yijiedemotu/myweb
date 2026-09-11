@@ -38,6 +38,9 @@ yarn-error.log*
 .npm-cache/
 .appdata/
 
+# local scratch dumps (not part of the project)
+/body403.txt
+
 # runtime SQLite database (committed seed content lives under data/seed/)
 /data/site.db
 /data/site.db-shm
