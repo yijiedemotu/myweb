@@ -304,8 +304,20 @@ Worker 部署成功后，它还需要 `ADMIN_PASSWORD` 才能登录后台。
 3. 按提示完成 DNS 配置（域名已托管在 Cloudflare 时通常自动完成）。
 4. 证书自动签发，等状态变成 Active 即可用 HTTPS 访问。
 
-> 绑定域名后建议回到第 6 步，把 `NEXT_PUBLIC_SITE_URL` 设成该域名，
-> 让 RSS 里生成绝对链接。
+> ⚠️ **该主机名下若已有 A/AAAA/CNAME 记录，Add 会失败。**
+> 先去 DNS → Records 删掉那条旧记录（通常是上一版部署的遗留），再回来添加。
+>
+> ⚠️ 必须选 **Custom Domain**，不要选 **Route**——Route 是给"背后还有源站"的场景用的。
+
+> **`NEXT_PUBLIC_SITE_URL` 不用设。** `app/rss.xml/route.ts` 在它为空时会回退到
+> 请求的 Host 头，绑好自定义域后 RSS 自动输出该域名的绝对链接。
+> 若确实要固定：`NEXT_PUBLIC_*` 是**构建期**注入的，必须加在
+> **Settings → Build → Variables and Secrets** 并**重新部署**，
+> 然后访问 `/rss.xml` 确认 `<link>` 生效。
+
+> 📄 **国内访问（`workers.dev` 打不开）请看
+> [`docs/cvetryu.cn-国内访问-绑定自定义域.md`](./docs/cvetryu.cn-国内访问-绑定自定义域.md)**——
+> 含 DNS 污染实测证据、逐步操作与验收清单。
 
 ---
 

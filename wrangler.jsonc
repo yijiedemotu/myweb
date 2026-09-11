@@ -15,6 +15,14 @@
   // nodejs_compat 是 OpenNext 的硬性要求；lib/auth.ts 里的 node:crypto HMAC 靠它。
   "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
 
+  // ⚠️ 关闭 myweb.<子域>.workers.dev 访问，只允许通过自定义域名访问站点。
+  // 前置条件：自定义域名（cvetryu.cn / www.cvetryu.cn）必须已经生效，
+  // 否则部署完之后将没有任何入口能打开站点。
+  // 关掉它的另一个好处：workers.dev 在国内被 DNS 污染，留着只会造成困惑。
+  "workers_dev": false,
+  // 同时关闭每次部署生成的 <版本>-myweb.<子域>.workers.dev 预览地址。
+  "preview_urls": false,
+
   // 静态资源（public/ 与构建产物）作为 Worker 的 assets 提供。
   "assets": {
     "directory": ".open-next/assets",

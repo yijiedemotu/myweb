@@ -196,6 +196,9 @@ npm run db:migrate:remote
 在 Cloudflare 控制台：**Workers & Pages → myweb → Settings → Domains &
 Routes → Add custom domain**，填你的域名即可，证书自动签发。
 
+> ⚠️ 该主机名下若已有 A/AAAA/CNAME 记录（上一版部署的遗留），Add 会失败，
+> 先去 DNS → Records 删掉旧记录。必须选 **Custom Domain**，不是 **Route**。
+
 也可以写进 `wrangler.jsonc`：
 
 ```jsonc
@@ -204,13 +207,14 @@ Routes → Add custom domain**，填你的域名即可，证书自动签发。
 ]
 ```
 
-配好域名后，建议把站点绝对地址告诉 RSS（Server 端运行时读取）：
+配好域名后，RSS 的绝对地址**不用特意配置**：`app/rss.xml/route.ts` 在
+`NEXT_PUBLIC_SITE_URL` 为空时会回退到请求的 Host 头，自动产出该域名的链接。
 
-```jsonc
-"vars": {
-  "NEXT_PUBLIC_SITE_URL": "https://your-domain.com"
-}
-```
+> 若确实要固定这个值，注意 `NEXT_PUBLIC_*` 是**构建期**内联进产物的，
+> 改运行时变量不生效——必须作为**构建变量**设置并重新部署，再访问 `/rss.xml` 验证。
+
+> 📄 **国内访问（`workers.dev` 被 DNS 污染打不开）请看
+> [`docs/cvetryu.cn-国内访问-绑定自定义域.md`](./docs/cvetryu.cn-国内访问-绑定自定义域.md)。**
 
 ---
 
@@ -266,12 +270,11 @@ Routes → Add custom domain**，填你的域名即可，证书自动签发。
 
 ## 10. 和旧部署方式的关系
 
-`DEPLOY_CN.md`（国内服务器 + pm2 + Nginx）和
-`docs/域名配置-CloudflareTunnel-cvetryu.cn.md`（Cloudflare 隧道回源）描述的是
-**迁移前**的架构。现在代码已经只依赖 D1，那两条路都不再适用：
+**迁移前**用的是「阿里云大陆服务器 + Nginx + pm2 + Cloudflare Tunnel」，
+那套文档已经全部删除（可从 git 历史找回）。现在代码只依赖 D1，自建服务器那条路不再适用：
 
-- 旧服务器上跑 `npm run build` 会因为缺少 D1 绑定而失败（`lib/db.ts` 需要 Workers
-  运行时提供的 `DB`）。
+- 在普通服务器上跑 `npm run build` 会因为缺少 D1 绑定而失败（`lib/db.ts` 需要
+  Workers 运行时提供的 `DB`）。
 - 如果确实还想自建服务器，需要另外提供一个 D1 兼容层，不建议。
 
 Workers 这条路顺带的好处：不用买服务器、不用备案、天然全球加速、没有运维。

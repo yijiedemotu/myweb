@@ -110,6 +110,10 @@ data/
 
 ## 部署
 
+**线上实际配置（Worker 名、D1、域名、当前绑定状态）见
+[`docs/部署现状-Cloudflare.md`](./docs/部署现状-Cloudflare.md)。**
+排查问题、改配置前先看它。日常改动需不需要重新部署，那张表里也有。
+
 部署目标是 **Cloudflare Workers**，两种方式任选其一：
 
 - **控制台版（全程浏览器操作）**：[`DEPLOY_CLOUDFLARE_DASHBOARD.md`](./DEPLOY_CLOUDFLARE_DASHBOARD.md)
@@ -126,5 +130,6 @@ npx wrangler secret put ADMIN_PASSWORD        # 设置后台密码
 npm run deploy                                # 构建并发布
 ```
 
-> `DEPLOY_CN.md`（国内服务器 + pm2 + Nginx）和 `docs/域名配置-CloudflareTunnel-cvetryu.cn.md`
-> 描述的是**迁移前**的架构，现在代码依赖 Workers 运行时提供的 D1 绑定，这两条路已不再适用。
+> 描述「阿里云大陆服务器 + Nginx + pm2 + Cloudflare Tunnel」那套**迁移前**架构的文档
+> 已经全部删除（需要历史资料可从 git 历史找回）。那台服务器已停用，
+> 现在代码只依赖 Workers 运行时提供的 D1 绑定。
