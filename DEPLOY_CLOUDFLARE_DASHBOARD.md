@@ -231,21 +231,30 @@ D1 有一张 `d1_migrations` 表用来记录哪些迁移已经应用过：
 
 ## 6. 设置后台密码（密钥）
 
+> 🔴 **这一步没做之前，你的网站后台是敞开的。**
+> `lib/auth.ts` 里 `ADMIN_PASSWORD` 读不到时会回退到默认值 `changeme`，
+> 而 Worker 一部署完就是**公网可访问**的。也就是说：**在你设置好密钥之前，
+> 任何人都能用 `changeme` 登录 `/admin` 修改或删除你的内容。**
+> 所以第 5 步部署成功后，请**紧接着**做这一步，不要拖。
+>
+> 验证方法：设置完密码后，用 `changeme` 试登录一次，应该被拒绝。
+> 另外注意——在控制台里要**添加**一个 Secret，别误点成**删除**已有的绑定。
+
 > **找不到 `Variables and Secrets` 这个按钮？** 说明**第 5 步的 Worker 还没创建成功**。
 > 这个入口属于 Worker 的详情页，Worker 不存在时就不会出现。
 > 可以在本地确认一下：
 >
 > ```bash
-> npx wrangler deployments list --name portfolio-website
+> npx wrangler deployments list --name myweb
 > ```
 >
 > 如果返回 `This Worker does not exist on your account`，请先回到第 5 步把 Worker
 > 建出来。另外注意：如果你点开的是 **D1 数据库**的 Settings，那里也没有这一项——
-> 要进的是 **Worker**（`portfolio-website`）的 Settings。
+> 要进的是 **Worker**（`myweb`）的 Settings。
 
 Worker 部署成功后，它还需要 `ADMIN_PASSWORD` 才能登录后台。
 
-1. **Workers & Pages** → 点开 `portfolio-website` 这个 Worker。
+1. **Workers & Pages** → 点开 `myweb` 这个 Worker。
 2. **Settings / 设置** → **Variables and Secrets / 变量和密钥**。
 3. 点 **Add / 添加**：
    - Type：**Secret**（一定要选 Secret，不要选 Text，否则是明文）
@@ -269,7 +278,7 @@ Worker 部署成功后，它还需要 `ADMIN_PASSWORD` 才能登录后台。
 
 ## 7. 验证部署
 
-打开 Worker 的地址（形如 `https://portfolio-website.<你的子域>.workers.dev`）：
+打开 Worker 的地址（形如 `https://myweb.<你的子域>.workers.dev`）：
 
 1. **首页**：应能看到你的名字、精选作品和文章列表。
 2. **`/blog`**：应有 11 篇文章。
@@ -323,7 +332,7 @@ Worker 部署成功后，它还需要 `ADMIN_PASSWORD` 才能登录后台。
 **找不到 `Variables and Secrets` / `Settings` 里的密钥入口**
 Worker 还没创建成功（第 5 步没完成）。`Variables and Secrets` 是 **Worker 详情页**的
 设置项，不是 D1 数据库页的。用
-`npx wrangler deployments list --name portfolio-website` 确认；
+`npx wrangler deployments list --name myweb` 确认；
 若报 `This Worker does not exist on your account`，先完成第 5 步。
 
 **报 `no such table: profile`（或 `no such table: posts`）**

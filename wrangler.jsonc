@@ -5,7 +5,10 @@
 
   // opennextjs-cloudflare build 的产物入口。
   "main": ".open-next/worker.js",
-  "name": "portfolio-website",
+  // Worker 名称。必须与 Cloudflare 上实际存在的 Worker 一致，
+  // 否则 wrangler deploy 会新建一个同名 Worker 而不是更新现有的。
+  // 线上现有的 Worker 名字是 myweb（与 Git 仓库同名）。
+  "name": "myweb",
 
   // 兼容日期：决定 workerd 采用哪一版运行时语义，只能用已发布的日期。
   "compatibility_date": "2026-09-01",

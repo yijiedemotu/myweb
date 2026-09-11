@@ -120,7 +120,7 @@ npm run deploy
 ```
 
 `deploy` = `opennextjs-cloudflare build && opennextjs-cloudflare deploy`。
-成功后会打印一个 `https://portfolio-website.<你的子域>.workers.dev` 地址。
+成功后会打印一个 `https://myweb.<你的子域>.workers.dev` 地址。
 
 ### 3.5 验证
 
@@ -193,7 +193,7 @@ npm run db:migrate:remote
 
 ## 7. 绑定自定义域名
 
-在 Cloudflare 控制台：**Workers & Pages → portfolio-website → Settings → Domains &
+在 Cloudflare 控制台：**Workers & Pages → myweb → Settings → Domains &
 Routes → Add custom domain**，填你的域名即可，证书自动签发。
 
 也可以写进 `wrangler.jsonc`：
@@ -259,7 +259,7 @@ Routes → Add custom domain**，填你的域名即可，证书自动签发。
 
 **看线上日志**
 `wrangler.jsonc` 里已开 `observability`，可在控制台
-**Workers & Pages → portfolio-website → Logs** 里实时查看；命令行用
+**Workers & Pages → myweb → Logs** 里实时查看；命令行用
 `npx wrangler tail`。
 
 ---
