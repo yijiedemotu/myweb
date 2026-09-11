@@ -26,9 +26,9 @@ export default async function AdminHome() {
           {profile.name ? `你好，${profile.name}` : "后台概览"}
         </h1>
         <p className="mt-1 opacity-60 text-sm">
-          在这里发布文章、管理作品和更新个人资料。内容保存为{" "}
-          <code className="px-1 rounded bg-black/5 dark:bg-white/10">data/site.db</code>{" "}
-          的 SQLite 数据库中。
+          在这里发布文章、管理作品和更新个人资料。内容保存在 Cloudflare 的{" "}
+          <code className="px-1 rounded bg-black/5 dark:bg-white/10">D1</code>{" "}
+          数据库中，保存后前台立即可见。
         </p>
       </div>
 

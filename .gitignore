@@ -49,6 +49,12 @@ yarn-error.log*
 # scratch build dirs
 .tmp-build/
 
+# Cloudflare / OpenNext
+/.open-next/
+/.wrangler/
+.dev.vars
+.dev.vars.*
+
 # vercel
 .vercel
 

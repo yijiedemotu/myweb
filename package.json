@@ -6,10 +6,17 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
+    "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
+    "upload": "opennextjs-cloudflare build && opennextjs-cloudflare upload",
+    "db:migrate:local": "wrangler d1 migrations apply portfolio-website-db --local",
+    "db:migrate:remote": "wrangler d1 migrations apply portfolio-website-db --remote",
+    "db:dump": "node scripts/dump-d1-data.mjs",
+    "db:verify": "node scripts/verify-migrations.mjs"
   },
   "dependencies": {
-    "better-sqlite3": "^13.0.3",
+    "@opennextjs/cloudflare": "^1.20.6",
     "highlight.js": "^11.12.0",
     "marked": "^18.0.12",
     "next": "16.3.4",
@@ -17,15 +24,18 @@
     "react-dom": "19.2.8"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260911.1",
     "@tailwindcss/postcss": "^4",
     "@types/better-sqlite3": "^9.6.0",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "better-sqlite3": "^13.0.3",
     "eslint": "^9",
     "eslint-config-next": "16.3.4",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "wrangler": "^4.131.0"
   },
-  "description": "Personal portfolio & blog built with Next.js and a file-backed admin CMS"
+  "description": "Personal portfolio & blog built with Next.js and a D1-backed admin CMS"
 }

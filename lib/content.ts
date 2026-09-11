@@ -1,16 +1,26 @@
-import type {
-  ContentRepo,
-  Post,
-  Profile,
-  Project,
-} from "./types";
-import { db, colProfile, rowProfile, colProject, rowProject, colPost, rowPost } from "./db";
+import type { ContentRepo, Post, Profile, Project } from "./types";
+import { getDb } from "./db";
+import {
+  colPost,
+  colProfile,
+  colProject,
+  rowPost,
+  rowProfile,
+  rowProject,
+} from "./mappers";
+import type { PostRow, ProfileRow, ProjectRow } from "./mappers";
 
 /**
- * Content repository backed by SQLite (see lib/db.ts).
+ * 内容仓库，后端为 Cloudflare D1（SQLite）。
  *
- * All public pages read through this module, so swapping the backing store
- * (SQLite now, Postgres later) never touches page code.
+ * 迁移前这里用 better-sqlite3 的同步 prepared statement；D1 只有异步 API，
+ * 所以每个方法都改成 await。对外契约（lib/types.ts 的 ContentRepo）本来就是
+ * Promise 形状、且所有页面/Server Action 都已经 await，因此这次改动没有波及
+ * 任何页面或组件。
+ *
+ * 没有 WAL：D1 自己管持久化，不需要（也不支持）journal_mode pragma。
+ * 没有 db.transaction()：需要原子性的地方改用 db.batch()，D1 保证一个 batch
+ * 内的语句按序原子执行。
  */
 
 const slugOk = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
@@ -28,200 +38,269 @@ const EMPTY_PROFILE: Profile = {
   links: [],
 };
 
-const stmtProfileGet = db.prepare("SELECT * FROM profile WHERE id = 1");
-const stmtProfileUpsert = db.prepare(`
-  INSERT INTO profile
-    (id, name, headline, avatar, email, location, intro, about, skills, links)
-  VALUES (1, @name, @headline, @avatar, @email, @location, @intro, @about, @skills, @links)
-  ON CONFLICT(id) DO UPDATE SET
-    name=excluded.name, headline=excluded.headline, avatar=excluded.avatar,
-    email=excluded.email, location=excluded.location, intro=excluded.intro,
-    about=excluded.about, skills=excluded.skills, links=excluded.links
-`);
-
-const stmtProjectsAll = db.prepare(
-  "SELECT * FROM projects ORDER BY position ASC, rowid ASC"
-);
-const stmtProjectGet = db.prepare("SELECT * FROM projects WHERE slug = ?");
-const stmtProjectUpdate = db.prepare(`
-  UPDATE projects SET
-    title=@title, tagline=@tagline, description=@description, tech=@tech,
-    url=@url, repo=@repo, image=@image, year=@year, status=@status,
-    featured=@featured, visible=@visible
-  WHERE slug = @slug
-`);
-const stmtProjectInsert = db.prepare(`
-  INSERT INTO projects
-    (slug, title, tagline, description, tech, url, repo, image, year, status, featured, visible, position)
-  VALUES (@slug, @title, @tagline, @description, @tech, @url, @repo, @image,
-          @year, @status, @featured, @visible, @position)
-`);
-const stmtProjectDelete = db.prepare("DELETE FROM projects WHERE slug = ?");
-const stmtProjectExists = db.prepare("SELECT slug FROM projects WHERE slug = ?");
-const stmtProjectVisible = db.prepare("UPDATE projects SET visible = ? WHERE slug = ?");
-const stmtProjectFeatured = db.prepare("UPDATE projects SET featured = ? WHERE slug = ?");
-const stmtProjectMaxPosition = db.prepare(
-  "SELECT COALESCE(MAX(position), 0) AS m FROM projects"
-);
-const stmtOrderedPositions = db.prepare(
-  "SELECT slug, position FROM projects ORDER BY position ASC, rowid ASC"
-);
-const stmtSetPosition = db.prepare("UPDATE projects SET position = ? WHERE slug = ?");
-
-function mapProject(row: ReturnType<typeof rowProject>): Project {
-  return colProject(row);
-}
-
-const stmtPostsAll = db.prepare(
-  "SELECT * FROM posts ORDER BY featured DESC, position ASC, date DESC, slug ASC"
-);
-const stmtPostsPublished = db.prepare(
-  "SELECT * FROM posts WHERE published = 1 ORDER BY featured DESC, position ASC, date DESC, slug ASC"
-);
-const stmtPostGet = db.prepare("SELECT * FROM posts WHERE slug = ?");
-const stmtPostUpdate = db.prepare(`
-  UPDATE posts SET
-    title=@title, summary=@summary, body=@body, date=@date, updated=@updated,
-    tags=@tags, published=@published, featured=@featured
-  WHERE slug = @slug
-`);
-const stmtPostInsert = db.prepare(`
-  INSERT INTO posts
-    (slug, title, summary, body, date, updated, tags, published, featured, position)
-  VALUES (@slug, @title, @summary, @body, @date, @updated, @tags, @published, @featured, @position)
-`);
-const stmtPostDelete = db.prepare("DELETE FROM posts WHERE slug = ?");
-const stmtPostExists = db.prepare("SELECT slug FROM posts WHERE slug = ?");
-const stmtPostFeatured = db.prepare("UPDATE posts SET featured = ? WHERE slug = ?");
-const stmtPostMaxPosition = db.prepare(
-  "SELECT COALESCE(MAX(position), 0) AS m FROM posts"
-);
-const stmtPostOrdered = db.prepare(
-  "SELECT slug, position FROM posts ORDER BY position ASC, rowid ASC"
-);
-const stmtSetPostPosition = db.prepare("UPDATE posts SET position = ? WHERE slug = ?");
-
-function mapPost(row: ReturnType<typeof rowPost>): Post {
-  return colPost(row);
-}
-
 export const content: ContentRepo = {
-  readProfile: () => {
-    const row = stmtProfileGet.get() as ReturnType<typeof rowProfile> | undefined;
-    return Promise.resolve(row ? colProfile(row) : { ...EMPTY_PROFILE });
+  async readProfile() {
+    const db = await getDb();
+    const row = await db
+      .prepare("SELECT * FROM profile WHERE id = 1")
+      .first<ProfileRow>();
+    return row ? colProfile(row) : { ...EMPTY_PROFILE };
   },
 
-  writeProfile: (p) => {
-    stmtProfileUpsert.run(rowProfile(p));
-    return Promise.resolve();
+  async writeProfile(p) {
+    const db = await getDb();
+    const r = rowProfile(p);
+    await db
+      .prepare(
+        `INSERT INTO profile
+           (id, name, headline, avatar, email, location, intro, about, skills, links)
+         VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         ON CONFLICT(id) DO UPDATE SET
+           name=excluded.name, headline=excluded.headline, avatar=excluded.avatar,
+           email=excluded.email, location=excluded.location, intro=excluded.intro,
+           about=excluded.about, skills=excluded.skills, links=excluded.links`,
+      )
+      .bind(
+        r.name,
+        r.headline,
+        r.avatar,
+        r.email,
+        r.location,
+        r.intro,
+        r.about,
+        r.skills,
+        r.links,
+      )
+      .run();
   },
 
-  listProjects: () => {
-    const rows = stmtProjectsAll.all() as ReturnType<typeof rowProject>[];
-    return Promise.resolve(rows.map(mapProject));
+  async listProjects() {
+    const db = await getDb();
+    const { results } = await db
+      .prepare("SELECT * FROM projects ORDER BY position ASC, rowid ASC")
+      .all<ProjectRow>();
+    return results.map(colProject);
   },
 
-  readProject: (slug) => {
-    if (!isSafeSlug(slug)) return Promise.resolve(null);
-    const row = stmtProjectGet.get(slug) as ReturnType<typeof rowProject> | undefined;
-    return Promise.resolve(row ? mapProject(row) : null);
+  async readProject(slug) {
+    if (!isSafeSlug(slug)) return null;
+    const db = await getDb();
+    const row = await db
+      .prepare("SELECT * FROM projects WHERE slug = ?")
+      .bind(slug)
+      .first<ProjectRow>();
+    return row ? colProject(row) : null;
   },
 
-  writeProject: (p) => {
-    const exists = !!stmtProjectExists.get(p.slug);
-    const params = rowProject(p) as Record<string, unknown>;
-    if (exists) {
-      stmtProjectUpdate.run(params);
-    } else {
-      const max = (stmtProjectMaxPosition.get() as { m: number }).m;
-      stmtProjectInsert.run({ ...params, position: max + 1 });
+  async writeProject(p) {
+    const db = await getDb();
+    const r = rowProject(p);
+    const existing = await db
+      .prepare("SELECT slug FROM projects WHERE slug = ?")
+      .bind(p.slug)
+      .first<{ slug: string }>();
+
+    if (existing) {
+      await db
+        .prepare(
+          `UPDATE projects SET
+             title=?, tagline=?, description=?, tech=?, url=?, repo=?, image=?,
+             year=?, status=?, featured=?, visible=?
+           WHERE slug = ?`,
+        )
+        .bind(
+          r.title,
+          r.tagline,
+          r.description,
+          r.tech,
+          r.url,
+          r.repo,
+          r.image,
+          r.year,
+          r.status,
+          r.featured,
+          r.visible,
+          p.slug,
+        )
+        .run();
+      return;
     }
-    return Promise.resolve();
+
+    // 新记录排到末尾。用子查询而不是「先查 MAX 再插」，省一次往返也避免竞态。
+    await db
+      .prepare(
+        `INSERT INTO projects
+           (slug, title, tagline, description, tech, url, repo, image, year,
+            status, featured, visible, position)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                 (SELECT COALESCE(MAX(position), 0) + 1 FROM projects))`,
+      )
+      .bind(
+        r.slug,
+        r.title,
+        r.tagline,
+        r.description,
+        r.tech,
+        r.url,
+        r.repo,
+        r.image,
+        r.year,
+        r.status,
+        r.featured,
+        r.visible,
+      )
+      .run();
   },
 
-  deleteProject: (slug) => {
-    if (isSafeSlug(slug)) stmtProjectDelete.run(slug);
-    return Promise.resolve();
+  async deleteProject(slug) {
+    if (!isSafeSlug(slug)) return;
+    const db = await getDb();
+    await db.prepare("DELETE FROM projects WHERE slug = ?").bind(slug).run();
   },
 
-  setProjectVisible: (slug, visible) => {
-    if (isSafeSlug(slug)) stmtProjectVisible.run(visible ? 1 : 0, slug);
-    return Promise.resolve();
+  async setProjectVisible(slug, visible) {
+    if (!isSafeSlug(slug)) return;
+    const db = await getDb();
+    await db
+      .prepare("UPDATE projects SET visible = ? WHERE slug = ?")
+      .bind(visible ? 1 : 0, slug)
+      .run();
   },
 
-  setProjectFeatured: (slug, featured) => {
-    if (isSafeSlug(slug)) stmtProjectFeatured.run(featured ? 1 : 0, slug);
-    return Promise.resolve();
+  async setProjectFeatured(slug, featured) {
+    if (!isSafeSlug(slug)) return;
+    const db = await getDb();
+    await db
+      .prepare("UPDATE projects SET featured = ? WHERE slug = ?")
+      .bind(featured ? 1 : 0, slug)
+      .run();
   },
 
-  moveProject: (slug, dir) => {
-    if (!isSafeSlug(slug)) return Promise.resolve();
-    const rows = stmtOrderedPositions.all() as { slug: string; position: number }[];
-    const idx = rows.findIndex((r) => r.slug === slug);
-    if (idx < 0) return Promise.resolve();
+  async moveProject(slug, dir) {
+    if (!isSafeSlug(slug)) return;
+    const db = await getDb();
+    const { results } = await db
+      .prepare("SELECT slug, position FROM projects ORDER BY position ASC, rowid ASC")
+      .all<{ slug: string; position: number }>();
+
+    const idx = results.findIndex((r) => r.slug === slug);
+    if (idx < 0) return;
     const target = dir === "up" ? idx - 1 : idx + 1;
-    if (target < 0 || target >= rows.length) return Promise.resolve();
-    const a = rows[idx];
-    const b = rows[target];
-    const tx = db.transaction(() => {
-      stmtSetPosition.run(b.position, a.slug);
-      stmtSetPosition.run(a.position, b.slug);
-    });
-    tx();
-    return Promise.resolve();
+    if (target < 0 || target >= results.length) return;
+
+    const a = results[idx];
+    const b = results[target];
+    await db.batch([
+      db.prepare("UPDATE projects SET position = ? WHERE slug = ?").bind(b.position, a.slug),
+      db.prepare("UPDATE projects SET position = ? WHERE slug = ?").bind(a.position, b.slug),
+    ]);
   },
 
-  reorderProjects: (order) => {
-    const apply = db.transaction((list: string[]) => {
-      list.forEach((slug, i) => {
-        if (isSafeSlug(slug)) stmtSetPosition.run(i + 1, slug);
-      });
-    });
-    apply(order);
-    return Promise.resolve();
+  async reorderProjects(order) {
+    const db = await getDb();
+    // 索引按传入数组本身计（与原实现一致），只为合法 slug 生成语句。
+    const stmts = order
+      .map((slug, i) => ({ slug, i }))
+      .filter(({ slug }) => isSafeSlug(slug))
+      .map(({ slug, i }) =>
+        db.prepare("UPDATE projects SET position = ? WHERE slug = ?").bind(i + 1, slug),
+      );
+    if (stmts.length > 0) await db.batch(stmts);
   },
 
-  listPosts: async (opts) => {
-    const stmt = opts?.onlyPublished ? stmtPostsPublished : stmtPostsAll;
-    const rows = stmt.all() as ReturnType<typeof rowPost>[];
-    return rows.map(colPost);
+  async listPosts(opts) {
+    const db = await getDb();
+    const sql = opts?.onlyPublished
+      ? "SELECT * FROM posts WHERE published = 1 ORDER BY featured DESC, position ASC, date DESC, slug ASC"
+      : "SELECT * FROM posts ORDER BY featured DESC, position ASC, date DESC, slug ASC";
+    const { results } = await db.prepare(sql).all<PostRow>();
+    return results.map(colPost);
   },
 
-  readPost: (slug) => {
-    if (!isSafeSlug(slug)) return Promise.resolve(null);
-    const row = stmtPostGet.get(slug) as ReturnType<typeof rowPost> | undefined;
-    return Promise.resolve(row ? mapPost(row) : null);
+  async readPost(slug) {
+    if (!isSafeSlug(slug)) return null;
+    const db = await getDb();
+    const row = await db
+      .prepare("SELECT * FROM posts WHERE slug = ?")
+      .bind(slug)
+      .first<PostRow>();
+    return row ? colPost(row) : null;
   },
 
-  writePost: (p) => {
-    const exists = !!stmtPostExists.get(p.slug);
-    const params = rowPost(p) as Record<string, unknown>;
-    if (exists) {
-      stmtPostUpdate.run(params);
-    } else {
-      const max = (stmtPostMaxPosition.get() as { m: number }).m;
-      stmtPostInsert.run({ ...params, position: max + 1 });
+  async writePost(p) {
+    const db = await getDb();
+    const r = rowPost(p);
+    const existing = await db
+      .prepare("SELECT slug FROM posts WHERE slug = ?")
+      .bind(p.slug)
+      .first<{ slug: string }>();
+
+    if (existing) {
+      await db
+        .prepare(
+          `UPDATE posts SET
+             title=?, summary=?, body=?, date=?, updated=?, tags=?, published=?, featured=?
+           WHERE slug = ?`,
+        )
+        .bind(
+          r.title,
+          r.summary,
+          r.body,
+          r.date,
+          r.updated,
+          r.tags,
+          r.published,
+          r.featured,
+          p.slug,
+        )
+        .run();
+      return;
     }
-    return Promise.resolve();
+
+    await db
+      .prepare(
+        `INSERT INTO posts
+           (slug, title, summary, body, date, updated, tags, published, featured, position)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?,
+                 (SELECT COALESCE(MAX(position), 0) + 1 FROM posts))`,
+      )
+      .bind(
+        r.slug,
+        r.title,
+        r.summary,
+        r.body,
+        r.date,
+        r.updated,
+        r.tags,
+        r.published,
+        r.featured,
+      )
+      .run();
   },
 
-  deletePost: (slug) => {
-    if (isSafeSlug(slug)) stmtPostDelete.run(slug);
-    return Promise.resolve();
+  async deletePost(slug) {
+    if (!isSafeSlug(slug)) return;
+    const db = await getDb();
+    await db.prepare("DELETE FROM posts WHERE slug = ?").bind(slug).run();
   },
 
-  setPostFeatured: (slug, featured) => {
-    if (isSafeSlug(slug)) stmtPostFeatured.run(featured ? 1 : 0, slug);
-    return Promise.resolve();
+  async setPostFeatured(slug, featured) {
+    if (!isSafeSlug(slug)) return;
+    const db = await getDb();
+    await db
+      .prepare("UPDATE posts SET featured = ? WHERE slug = ?")
+      .bind(featured ? 1 : 0, slug)
+      .run();
   },
 
-  reorderPosts: (order) => {
-    const apply = db.transaction((list: string[]) => {
-      list.forEach((slug, i) => {
-        if (isSafeSlug(slug)) stmtSetPostPosition.run(i + 1, slug);
-      });
-    });
-    apply(order);
-    return Promise.resolve();
+  async reorderPosts(order) {
+    const db = await getDb();
+    const stmts = order
+      .map((slug, i) => ({ slug, i }))
+      .filter(({ slug }) => isSafeSlug(slug))
+      .map(({ slug, i }) =>
+        db.prepare("UPDATE posts SET position = ? WHERE slug = ?").bind(i + 1, slug),
+      );
+    if (stmts.length > 0) await db.batch(stmts);
   },
 };

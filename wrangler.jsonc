@@ -1,0 +1,35 @@
+{
+	// Cloudflare Workers 部署配置。
+	// 更详细的字段说明见 https://developers.cloudflare.com/workers/wrangler/configuration/
+	"$schema": "node_modules/wrangler/config-schema.json",
+
+	// opennextjs-cloudflare build 的产物入口。
+	"main": ".open-next/worker.js",
+	"name": "portfolio-website",
+
+	// 兼容日期：决定 workerd 采用哪一版运行时语义，只能用已发布的日期。
+	"compatibility_date": "2026-09-01",
+	// nodejs_compat 是 OpenNext 的硬性要求；lib/auth.ts 里的 node:crypto HMAC 靠它。
+	"compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+
+	// 静态资源（public/ 与构建产物）作为 Worker 的 assets 提供。
+	"assets": {
+		"directory": ".open-next/assets",
+		"binding": "ASSETS"
+	},
+
+	// 内容数据库。先执行下面这条命令创建，再把输出的 database_id 填进来：
+	//   npx wrangler d1 create portfolio-website-db
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "portfolio-website-db",
+			"database_id": "REPLACE_WITH_YOUR_D1_DATABASE_ID"
+		}
+	],
+
+	// 在 Cloudflare 控制台里能直接看 Worker 日志，排障用。
+	"observability": {
+		"enabled": true
+	}
+}
