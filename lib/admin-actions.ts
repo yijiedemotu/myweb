@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { content, isSafeSlug } from "./content";
-import { adminPassword, clearSession, isLoggedIn, setSession } from "./auth";
+import { clearSession, isLoggedIn } from "./auth";
 import type { Post, Profile, Project } from "./types";
 
 /* ---------- small helpers ---------- */
@@ -44,13 +44,14 @@ async function requireLogin(): Promise<boolean> {
 
 /* ---------- auth ---------- */
 
-export async function login(formData: FormData): Promise<void> {
-  const pw = val(formData, "password");
-  if (pw && pw === adminPassword()) {
-    await setSession();
-  }
-  redirect("/admin");
-}
+/**
+ * 注意：这里**故意没有** login 这个 Server Action。
+ *
+ * 登录走的是 app/api/login/route.ts，那里带按 IP 的失败限流。之前这里存在一个
+ * 功能重复的 login action（实际没有任何地方引用它），但 Server Action 可以按其 ID
+ * 直接 POST 调用，等于给暴力破解留了一条绕过限流的旁路，所以删掉了。
+ * 以后如果要在后台里做登录表单，也请指向 /api/login，不要在这里再实现一遍。
+ */
 
 export async function logout(): Promise<void> {
   await clearSession();

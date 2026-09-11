@@ -40,7 +40,7 @@ Workers 运行在 `workerd` 里，它**没有文件系统、也不能加载原�
 | `wrangler.jsonc` | Worker 名、入口、D1 绑定、静态资源、`nodejs_compat` |
 | `open-next.config.ts` | OpenNext 适配器配置（未启用 R2 增量缓存） |
 | `cloudflare-env.d.ts` | 手写的最小 `CloudflareEnv` 声明，给 `DB` 加类型 |
-| `migrations/*.sql` | D1 schema + 初始内容 |
+| `migrations/*.sql` | D1 schema + 初始内容 + 登录限流表 |
 | `scripts/dump-d1-data.mjs` | 从旧 `data/site.db` 导出内容为 SQL |
 | `scripts/verify-migrations.mjs` | 本地回放迁移文件做校验 |
 

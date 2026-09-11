@@ -97,10 +97,15 @@ git push
 
 ## 4. 灌入表结构与内容
 
-数据库现在是空的。需要执行两个迁移文件：
+数据库现在是空的。需要执行 **三个** 迁移文件（顺序不能乱）：
 
-- `migrations/0001_init_schema.sql` —— 建三张表
+- `migrations/0001_init_schema.sql` —— 建三张内容表
 - `migrations/0002_initial_content.sql` —— 灌入内容（1 条个人资料 / 7 个作品 / 11 篇文章）
+- `migrations/0003_login_rate_limit.sql` —— 建登录失败限流用的计数表
+
+> ⚠️ **`0003` 不能漏。** 后台登录接口会读写这张表；如果表不存在，登录会因为
+> 数据库报错而失败。用方式 B 的 `migrations apply` 会自动把三个都执行掉；
+> 用方式 A 手动粘贴的话，三个文件都要贴一遍。
 
 ### 方式 A：全程在控制台（推荐给"只想用浏览器"的你）
 
@@ -113,7 +118,8 @@ git push
 
    > 文件较大，粘贴时如果控制台卡顿或提示内容过长，改用下面的方式 B。
 
-5. 验证：在控制台执行
+5. 最后打开 `migrations/0003_login_rate_limit.sql`，同样复制粘贴并执行。
+6. 验证：在控制台执行
 
    ```sql
    SELECT (SELECT COUNT(*) FROM profile)  AS profile,
@@ -126,8 +132,8 @@ git push
 ### 方式 B：本地一条命令（文件太大时的备选）
 
 如果你本机有 Node，`wrangler` 已经是项目的开发依赖。**推荐用 `migrations apply`**，
-因为它会把 `0001`/`0002` 记录进 `d1_migrations` 表，这样就不会出现下面「迁移记录」
-那一节说的问题：
+因为它会把 `migrations/` 下所有文件按顺序记录进 `d1_migrations` 表，这样就不会出现
+下面「迁移记录」那一节说的问题：
 
 ```bash
 npx wrangler login
@@ -334,6 +340,17 @@ Worker 还没创建成功（第 5 步没完成）。`Variables and Secrets` 是 
 设置项，不是 D1 数据库页的。用
 `npx wrangler deployments list --name myweb` 确认；
 若报 `This Worker does not exist on your account`，先完成第 5 步。
+
+**后台登录提示「登录尝试次数过多」**
+这是登录限流生效了：同一 IP 在 15 分钟内失败 5 次，就会被锁 15 分钟（`lib/rate-limit.ts`
+里的 `MAX_ATTEMPTS` / `WINDOW_MS` / `LOCK_MS` 可调）。等一会儿即可；如果确实要立刻解锁：
+
+```bash
+npx wrangler d1 execute portfolio-website-db --remote -y --command "DELETE FROM login_attempts;"
+```
+
+只用清掉自己那一条也行：`DELETE FROM login_attempts WHERE ip = '<你的IP>';`
+（表里存的是客户端 IP，取自 `cf-connecting-ip`。）
 
 **报 `no such table: profile`（或 `no such table: posts`）**
 说明第 4 步的迁移**没有真正执行成功**。最常见的原因是 wrangler 那句

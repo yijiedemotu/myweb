@@ -71,7 +71,7 @@ lib/
 components/
   Cards.tsx / BlogSearch.tsx / ThemeToggle.tsx
   admin/             # 后台表单与编辑器组件
-migrations/          # D1 迁移：0001 建表，0002 初始内容
+migrations/          # D1 迁移：0001 建表，0002 初始内容，0003 登录限流
 scripts/
   dump-d1-data.mjs       # 从旧 data/site.db 导出内容为 SQL
   verify-migrations.mjs  # 本地回放迁移文件做校验
@@ -89,6 +89,7 @@ data/
 
 - 表结构见 `migrations/0001_init_schema.sql`
 - 初始内容见 `migrations/0002_initial_content.sql`（1 条资料 / 7 个作品 / 11 篇文章）
+- 登录失败限流用 `login_attempts` 表（见 `migrations/0003_login_rate_limit.sql`）
 - `skills` / `tags` / `tech` / `links` 以 JSON 文本列存储
 - `slug` 只能是小写字母、数字和连字符
 - 想从旧的 `data/site.db` 重新导出：`npm run db:dump && npm run db:verify`
