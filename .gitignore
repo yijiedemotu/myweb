@@ -38,6 +38,9 @@ yarn-error.log*
 .npm-cache/
 .appdata/
 
+# local agent workspace notes (not part of the project)
+.workbuddy/
+
 # local scratch dumps (not part of the project)
 /body403.txt
 

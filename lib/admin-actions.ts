@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { content, isSafeSlug } from "./content";
 import { clearSession, isLoggedIn } from "./auth";
+import { fetchGithubProject, parseGithubRepo, repoKey } from "./github-import";
 import type { Post, Profile, Project } from "./types";
 
 /* ---------- small helpers ---------- */
@@ -266,4 +267,81 @@ export async function importProjects(rawList: unknown[]): Promise<{ added: numbe
     added++;
   }
   return { added, skipped: 0 };
+}
+
+/* ---------- 从 GitHub 链接一键导入作品 ---------- */
+
+const MAX_GITHUB_IMPORTS = 20;
+
+function errText(e: unknown): string {
+  return e instanceof Error ? e.message : "未知错误";
+}
+
+/**
+ * 粘贴一个或多个 GitHub 仓库链接，直接生成/更新作品。
+ *
+ * 与 importProjects 的区别：内容来自 GitHub API 而不是手工 JSON；并且按仓库
+ * 地址查重——同一个仓库重复导入时更新原作品（保留精选/显隐设置），不会
+ * 产生一堆 xxx-0 / xxx-1 的重复条目。
+ */
+export async function importProjectsFromGithub(
+  text: string,
+  includeReadme = true,
+): Promise<{ added: number; updated: number; errors: string[] }> {
+  if (!(await requireLogin())) return { added: 0, updated: 0, errors: [] };
+
+  const inputs = Array.from(
+    new Set(String(text ?? "").split(/[\s,，]+/).map((s) => s.trim()).filter(Boolean)),
+  ).slice(0, MAX_GITHUB_IMPORTS);
+  if (!inputs.length) {
+    return { added: 0, updated: 0, errors: ["请输入至少一个 GitHub 仓库链接"] };
+  }
+
+  const errors: string[] = [];
+  const byRepo = new Map<string, Project>();
+  for (const p of await content.listProjects()) {
+    const key = p.repo ? repoKey(p.repo) : null;
+    if (key && !byRepo.has(key)) byRepo.set(key, p);
+  }
+
+  let added = 0;
+  let updated = 0;
+  for (const input of inputs) {
+    const ref = parseGithubRepo(input);
+    if (!ref) {
+      errors.push(`${input}：不是有效的 GitHub 仓库链接`);
+      continue;
+    }
+    const key = repoKey(ref)!;
+    try {
+      const draft = await fetchGithubProject(ref, { includeReadme });
+      const dup = byRepo.get(key);
+      if (dup) {
+        // 复用原 slug，人工设置的精选/显隐不被导入覆盖。
+        await content.writeProject({
+          ...draft,
+          slug: dup.slug,
+          featured: !!dup.featured,
+          visible: dup.visible !== false,
+        });
+        updated++;
+      } else {
+        const base = asciiSlug(draft.slugBase) || asciiSlug(draft.title);
+        const slug = await uniqueSlug(base, "project", (s) =>
+          content.readProject(s).then(Boolean),
+        );
+        if (!slug) {
+          errors.push(`${ref.owner}/${ref.repo}：无法生成可用的 slug`);
+          continue;
+        }
+        const project: Project = { ...draft, slug, featured: false, visible: true };
+        await content.writeProject(project);
+        byRepo.set(key, project);
+        added++;
+      }
+    } catch (e) {
+      errors.push(`${ref.owner}/${ref.repo}：${errText(e)}`);
+    }
+  }
+  return { added, updated, errors };
 }

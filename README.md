@@ -31,6 +31,10 @@
 - `/admin/profile`：编辑个人资料（介绍、技能、社交链接）
 - 所有修改即时生效（页面按需动态渲染）
 
+**一键导入**（文章 / 作品列表页）
+- 粘贴 JSON 数组或单篇 Markdown 批量创建
+- 作品额外支持直接粘贴 GitHub 仓库链接：自动读取仓库信息并生成作品，同一仓库重复导入会更新原作品
+
 ## 快速开始
 
 ```bash
@@ -82,6 +86,30 @@ data/
   seed/              # 出厂示例内容（已被 0002 迁移固化）
 ```
 
+## 从 GitHub 链接导入作品
+
+在 `/admin/projects` 展开「一键导入」，切到「从 GitHub 链接导入」，每行贴一个仓库地址后点导入即可，例如：
+
+```text
+https://github.com/vercel/next.js
+https://github.com/you/your-repo.git
+owner/repo
+```
+
+支持完整 URL、`.git`、`tree/blob` 子路径、`git@github.com:` SSH 形式与 `owner/repo` 简写；也接受逗号分隔，单次最多 20 个。服务端通过 GitHub REST API 抓取并写入：
+
+| 作品字段 | 来源 |
+| --- | --- |
+| 标题 / slug | 仓库名 |
+| 一句话简介 | 仓库 description |
+| 项目详情 | 仓库 README（可在界面上关闭），顶部附来源、Star / Fork、主要技术 |
+| 所用技术 | 主要语言 + topics |
+| 演示链接 / 源码仓库 | homepage / html_url |
+| 年份 / 状态 | created_at 年份 / archived |
+| 精选 / 显隐 | 默认不精选、前台可见；重复导入时保留人工设置 |
+
+公开仓库无需任何配置。GitHub 未认证调用限额为 60 次/小时（按出口 IP 计），批量导入或读取私有仓库建议配置 `GITHUB_TOKEN`。README 里的相对链接与图片会自动改写成 GitHub 上的绝对地址，超长 README 会截断。
+
 ## 内容数据
 
 所有内容存于 D1 的三张表 `profile` / `projects` / `posts`，在 `/admin` 后台编辑，
@@ -101,6 +129,7 @@ data/
 | --- | --- |
 | `ADMIN_PASSWORD` | 后台登录密码。本地放 `.env.local`；线上用 `npx wrangler secret put ADMIN_PASSWORD` |
 | `NEXT_PUBLIC_SITE_URL` | 站点域名，用于 RSS/生成绝对链接，如 `https://your-domain.com` |
+| `GITHUB_TOKEN` | 可选。GitHub Personal Access Token，仅后台「从 GitHub 链接导入」使用：额度从 60 次/小时提升到 5000 次/小时，并可读取有权限的私有仓库。本地放 `.env.local`；线上用 `npx wrangler secret put GITHUB_TOKEN` |
 
 ## 自定义外观
 

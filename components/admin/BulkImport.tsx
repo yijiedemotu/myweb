@@ -2,9 +2,15 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { importPosts, importProjects } from "@/lib/admin-actions";
+import {
+  importPosts,
+  importProjects,
+  importProjectsFromGithub,
+} from "@/lib/admin-actions";
 
 type Kind = "post" | "project";
+type Mode = "paste" | "github";
+type Msg = { ok: boolean; text: string; details?: string[] };
 
 function toArray<T>(v: T | T[]): T[] {
   return Array.isArray(v) ? v : [v];
@@ -96,15 +102,59 @@ const HELP: Record<Kind, string> = {
   project: "作品请粘贴 JSON 数组（可多条）：字段 title、tagline、description、tech、repo、url、year、status、featured 等。",
 };
 
+const GITHUB_EXAMPLE = `https://github.com/vercel/next.js
+https://github.com/you/your-repo.git
+owner/repo`;
+
+const GITHUB_HELP =
+  "每行一个 GitHub 仓库链接（也可用逗号分隔，支持 .git、tree 子路径、git@ SSH 与 owner/repo 简写）。自动抓取仓库名、简介、语言与 topics、创建年份、主页和 README，直接生成作品；单次最多 20 个。同一仓库重复导入会更新原作品，不会新增重复条目。";
+
+const tabCls = (active: boolean) =>
+  `px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+    active
+      ? "bg-black text-white dark:bg-white dark:text-black"
+      : "border border-black/15 dark:border-white/15 opacity-60 hover:opacity-100"
+  }`;
+
 export default function BulkImport({ kind }: { kind: Kind }) {
   const [open, setOpen] = useState(false);
+  const [mode, setMode] = useState<Mode>("paste");
   const [text, setText] = useState("");
-  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [includeReadme, setIncludeReadme] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<Msg | null>(null);
   const router = useRouter();
+  const githubMode = kind === "project" && mode === "github";
+
+  function switchMode(next: Mode) {
+    setMode(next);
+    setText("");
+    setMsg(null);
+  }
 
   async function run() {
+    if (busy) return;
+    setBusy(true);
     setMsg(null);
     try {
+      if (githubMode) {
+        const res = await importProjectsFromGithub(text, includeReadme);
+        const done = res.added + res.updated;
+        setMsg({
+          ok: done > 0,
+          text: done > 0
+            ? `导入完成：新增 ${res.added} 个作品，更新 ${res.updated} 个`
+            : "没有导入任何作品",
+          details: res.errors,
+        });
+        if (done > 0) {
+          setText("");
+          router.refresh();
+          if (res.errors.length === 0) setOpen(false);
+        }
+        return;
+      }
+
       const list = kind === "post" ? parsePosts(text) : parseProjects(text);
       if (!list.length) {
         setMsg({ ok: false, text: "没有可导入的内容（缺少标题）" });
@@ -123,6 +173,8 @@ export default function BulkImport({ kind }: { kind: Kind }) {
         ok: false,
         text: "导入失败：" + (e instanceof Error ? e.message : "格式错误"),
       });
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -133,32 +185,71 @@ export default function BulkImport({ kind }: { kind: Kind }) {
         onClick={() => setOpen(!open)}
         className="text-sm font-medium text-blue-600 dark:text-blue-400"
       >
-        {open ? "收起导入" : "＋ 一键导入（粘贴 Markdown / JSON）"}
+        {open
+          ? "收起导入"
+          : kind === "project"
+            ? "＋ 一键导入（JSON / GitHub 链接）"
+            : "＋ 一键导入（粘贴 Markdown / JSON）"}
       </button>
 
       {open && (
         <div className="mt-4 space-y-3">
-          <p className="text-xs opacity-60">{HELP[kind]}</p>
+          {kind === "project" && (
+            <div className="flex items-center gap-2">
+              <button type="button" onClick={() => switchMode("paste")} className={tabCls(!githubMode)}>
+                粘贴 JSON
+              </button>
+              <button type="button" onClick={() => switchMode("github")} className={tabCls(githubMode)}>
+                从 GitHub 链接导入
+              </button>
+            </div>
+          )}
+
+          <p className="text-xs opacity-60">{githubMode ? GITHUB_HELP : HELP[kind]}</p>
           <textarea
             value={text}
             onChange={(e) => setText(e.target.value)}
-            rows={10}
+            rows={githubMode ? 4 : 10}
             className="w-full rounded-lg border border-black/15 dark:border-white/15 bg-transparent px-3 py-2 text-sm font-mono outline-none focus:border-blue-500"
-            placeholder={EXAMPLES[kind]}
+            placeholder={githubMode ? GITHUB_EXAMPLE : EXAMPLES[kind]}
           />
-          <div className="flex items-center gap-3">
+
+          {githubMode && (
+            <label className="flex items-center gap-2 text-xs opacity-80">
+              <input
+                type="checkbox"
+                checked={includeReadme}
+                onChange={(e) => setIncludeReadme(e.target.checked)}
+                className="w-4 h-4"
+              />
+              把仓库 README 作为项目详情（关闭则只生成简介、技术栈等概要信息）
+            </label>
+          )}
+
+          <div className="flex items-start gap-3">
             <button
               type="button"
               onClick={run}
-              disabled={!text.trim()}
-              className="px-4 py-2 rounded-lg bg-black text-white dark:bg-white dark:text-black text-sm disabled:opacity-40"
+              disabled={busy || !text.trim()}
+              className="shrink-0 px-4 py-2 rounded-lg bg-black text-white dark:bg-white dark:text-black text-sm disabled:opacity-40"
             >
-              一键导入
+              {githubMode
+                ? busy ? "正在读取 GitHub…" : "从 GitHub 导入"
+                : "一键导入"}
             </button>
             {msg && (
-              <span className={`text-sm ${msg.ok ? "text-green-600 dark:text-green-400" : "text-red-500"}`}>
-                {msg.text}
-              </span>
+              <div className="text-sm pt-2">
+                <span className={msg.ok ? "text-green-600 dark:text-green-400" : "text-red-500"}>
+                  {msg.text}
+                </span>
+                {msg.details && msg.details.length > 0 && (
+                  <ul className="mt-1 list-disc pl-5 text-xs text-red-500 space-y-0.5">
+                    {msg.details.map((d, i) => (
+                      <li key={i}>{d}</li>
+                    ))}
+                  </ul>
+                )}
+              </div>
             )}
           </div>
         </div>
